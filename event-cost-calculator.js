@@ -65,9 +65,15 @@ function recalculateEventCosts() {
     let opportunityCostMultiplier = 0;
     if (tooEarly) {
         opportunityCostMultiplier++;
+        $("#tooEarlyFeeWarning").removeClass("d-none");
+    }else{
+        $("#tooEarlyFeeWarning").addClass("d-none");
     }
     if (tooLate) {
         opportunityCostMultiplier++;
+        $("#tooLateFeeWarning").removeClass("d-none");
+    }else{
+        $("#tooLateFeeWarning").addClass("d-none");
     }
     let costOpportunityCost = 496.33 * opportunityCostMultiplier;
 
