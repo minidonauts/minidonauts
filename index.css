@@ -61,7 +61,7 @@ body,html {
     padding:5px 8px;
     border-bottom:2px solid transparent;
 }
-#links a:hover {
+#links a:hover:not(.selectedNavItem) {
     border-bottom:2px solid #fff;
 }
 #page {
@@ -81,6 +81,7 @@ body,html {
     flex-direction:column; */
     text-align: -webkit-center;
     transition:1s ease-in-out;
+    color: black;
 }
 #tagline {
     font-size:50px;
@@ -240,7 +241,6 @@ body,html {
 }
 #footer {
     width:100%;
-    padding:10vh 0px;
     text-align:center;
     font-weight:bold;
 }
@@ -288,5 +288,16 @@ button:focus {
 50% {background-position: 100% 50%}
 100% {background-position: 0% 50%}
 }
-
-@font-face { font-family: AstroSpace; src: url('AstroSpace-0Wl3o.otf'); } 
+@font-face {
+    font-family: AstroSpace;
+    src: url('AstroSpace-0Wl3o.otf');
+}
+.selectedNavItem {
+    color: #6c757d!important;
+    align-self: center;
+    cursor: default;
+    border-bottom:0px !important;
+}
+#event-start-container div {
+    color: #333 !important;
+}
