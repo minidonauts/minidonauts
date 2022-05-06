@@ -1,17 +1,26 @@
 function sendEmail() {
-    // Email.send({
-    //     SecureToken: "82e2b2d3-f096-4127-a9f6-42bf1617f221",
-    //     To: 'minidonauts@gmail.com',
-    //     From: 'minidonauts@gmail.com',
-    //     // From : $('#user-email-address').val(),
-    //     Subject: "This is the subject",
-    //     Body: "And this is the body"
-    // }).then(
-    //     message => {
-    //         alert(message);
-    //         //   location.href="reservationMade.html";
-    //     }
-    // );
+    const emailAddress = $('#user-email-address').val();
+    const eventAddress = $('#event-address').val();
+    const eventDate = $('#event-date').val();
+    const eventTime = $('#event-start option:selected')[0].text;
+    const eventHours = $('#event-hours').val();
+    var htmlString = document.getElementById('reservation-email-template').innerHTML;
+    htmlString = htmlString.replace("{{EventAddress}}",eventAddress);
+    htmlString = htmlString.replace("{{EventDateAndTime}}",eventTime+" on "+eventDate);
+    htmlString = htmlString.replace("{{EventHours}}",eventHours + " hr(s)");
+
+    Email.send({
+        SecureToken: "56ffec6d-82d6-44a4-ad77-9d33260d33cc",
+        To: emailAddress,
+        Cc: 'minidonauts@gmail.com',
+        From: 'minidonauts@gmail.com',
+        Subject: "Mini Donauts Reservation",
+        Body: htmlString
+    }).then(
+        message => {
+            location.href="reservation-made.html";
+        }
+    );
 }
 
 
