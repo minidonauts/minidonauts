@@ -51,7 +51,7 @@ function sendEmail() {
 }
 
 
-const bookedDates = ["05-07-2022"];
+const bookedDates = [];//"05-07-2022"];
 function disableDates(date) {
     var string = $.datepicker.formatDate('mm-dd-yy', date);
     var isBookedDate = bookedDates.indexOf(string) != -1;
