@@ -59,11 +59,10 @@
                 <div class="col">
                     <div class="form-label">Your Email Address*</div>
                     <div class="">
-                        <input id="user-email-address" style="width: 24.5rem;text-align: center;"
-                            value="jackesonh13@gmail.com" />
+                        <input id="user-email-address" style="width: 24.5rem;text-align: center;"/>
                     </div>
                     <div class="">
-                        <span id="user-email-address-invalid"></span>
+                        <span id="user-email-address-invalid" style="color: red"></span>
                     </div>
                 </div>
                 <div class="col pt-5">
@@ -71,20 +70,29 @@
                     <div style="font-size: x-small;">(Address Street, City)</div>
                     <div class="">
                         <input id="event-address" style="width: 24.5rem;text-align: center;"
-                            value="1234 Sesame St, Downers Grove" />
+                            />
+                    </div>
+                    <div class="">
+                        <span id="event-address-invalid" style="color: red"></span>
                     </div>
                 </div>
                 <div class="col pt-5">
                     <div class="form-label">Hours Of Unlimited Donuts For Event*</div>
                     <div class="">
                         <input id="event-hours" type="text" maxlength="1" pattern="[0-9]{1}"
-                            style="width: 1.5rem;text-align: center;" value="1" />
+                            style="width: 1.5rem;text-align: center;"/>
+                    </div>
+                    <div class="">
+                        <span id="event-hours-invalid" style="color: red"></span>
                     </div>
                 </div>
                 <div class="col pt-5">
                     <div class="form-label">Date Of Event*</div>
                     <div class="">
-                        <input type="text" id="event-date" style="text-align: center;" value="05/15/2022">
+                        <input type="text" id="event-date" style="text-align: center;">
+                    </div>
+                    <div class="">
+                        <span id="event-date-invalid" style="color: red"></span>
                     </div>
                 </div>
                 <div class="col pt-5">
