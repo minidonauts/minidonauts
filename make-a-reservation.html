@@ -21,6 +21,10 @@
     <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
     <script src="https://code.jquery.com/ui/1.13.1/jquery-ui.js"></script>
 
+    <script src="https://requirejs.org/docs/release/2.3.5/minified/require.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/google-spreadsheets@2.0.0/lib/spreadsheets.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/util.promisify@1.1.1/index.min.js"></script>
+
     <script src="https://smtpjs.com/v3/smtp.js"></script>
     <link rel="stylesheet" href="index.css">
 </head>
@@ -74,6 +78,16 @@
                     </div>
                     <div class="">
                         <span id="event-address-invalid" style="color: red"></span>
+                    </div>
+                </div>
+                <div class="col pt-5">
+                    <div class="form-label">Zipcode Of Event*</div>
+                    <div class="">
+                        <input id="event-zip" type="text" maxlength="5" pattern="[0-9]{5}"
+                            style="width: 4.5rem;text-align: center;"/>
+                    </div>
+                    <div class="">
+                        <span id="event-zip-invalid" style="color: red"></span>
                     </div>
                 </div>
                 <div class="col pt-5">
