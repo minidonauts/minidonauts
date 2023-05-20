@@ -8,7 +8,5 @@ function sendEmail() {
         `\tDuration of donut production: \n` +
         `\tEstimated number of guests: \n` +
         `\n`;
-    var attach = 'path';
-    document.location = "mailto:" + email + "?subject=" + subject + "&body=" + emailBody +
-        "?attach=" + attach;
+    document.location = "mailto:" + email + "?subject=" + subject + "&body=" + encodeURIComponent(emailBody);
 }
