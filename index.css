@@ -371,3 +371,16 @@ button:focus {
 .bg-page {
     background-color: #0070C0;
 }
+
+.outlined-text {
+    text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+}
+
+.tab-unselected {
+    background: #ffffff2e;
+}
+
+.tab-selected {
+    background: #ffffff80;
+    border-bottom: 2px solid #fff;
+}

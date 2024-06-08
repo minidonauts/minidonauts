@@ -28,7 +28,7 @@
     <script src="./footer.js" type="text/javascript"></script>
 </head>
 
-<body style="font-family: AstroSpace; color: #fdba44;">
+<body style="font-family: AstroSpace; color: #fdba44;" class="url-based">
     <div id="loading">
         <div id="spinner"></div>
     </div>
@@ -37,8 +37,69 @@
 
 
 
-        <div id="middle" class="align-items-center py-5 my-5 bg-page" style="color: #fdba44;">
-            <div class="mx-5">
+        <div id="middle" class="align-items-center p-4 my-5 bg-page" style="color: #fdba44;">
+            <div>
+                Send An Email to minidonauts@gmail.com Or
+                <button onclick="sendEmail()" style="font-size: x-large;">Send Reservation Request Templated Email</button>
+            </div>
+
+
+            <div class="row">
+                <div class="col">
+                    <hr class="my-5" />
+                    <h1>Our Flavors:</h1>
+                    <img src="images/flavors.jpg" style="width: auto; max-height: 25rem; max-width: -webkit-fill-available;" />
+                </div>
+                <div class="col" style="margin-left: 3rem;">
+                    <hr class="my-5" />
+
+                    <h1 class="text-start">Toppings:</h1>
+                    <ul class="text-start" style="font-size: 1.25rem; font-weight: initial;">
+                        <li>Oreo</li>
+                        <li>M&Ms</li>
+                        <li>Sprinkles</li>
+                        <li>Powdered Sugar</li>
+                        <li>Cinnamon Sugar</li>
+                    </ul>
+
+                    <h1 class="text-start">Sause:</h1>
+                    <ul class="text-start" style="font-size: 1.25rem; font-weight: initial;">
+                        <li>Chocolate</li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="my-5" />
+            <h1>Donut Box Labels:</h1>
+            <div class="row">
+                <div class="col">
+                    <h2>Default:</h2>
+                    <img src="images/defaultLabels.jpg" style="width: auto; max-height: 25rem; max-width: -webkit-fill-available;" class="pb-3" />
+                </div>
+                <div class="col">
+                    <h2>Customized:</h2>
+                    <img src="images/customLabel.jpg" style="width: auto; max-height: 25rem; max-width: -webkit-fill-available;" />
+                </div>
+            </div>
+
+            <hr class="my-5" />
+
+            <h1>Setups:</h1>
+
+            <div class="row">
+                <div class="col">
+                    <h2>Truck:</h2>
+                    <img src="images/truckSetup.jpg" style="width: auto; max-height: 25rem; max-width: -webkit-fill-available;" class="pb-3" />
+                </div>
+                <div class="col">
+                    <h2>Tent:</h2>
+                    <img src="images/tentSetup.jpg" style="width: auto; max-height: 25rem; max-width: -webkit-fill-available;" />
+                </div>
+            </div>
+
+            <hr class="my-5" />
+
+            <div>
                 Send An Email to minidonauts@gmail.com Or
                 <button onclick="sendEmail()" style="font-size: x-large;">Send Reservation Request Templated Email</button>
             </div>
