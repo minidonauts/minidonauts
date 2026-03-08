@@ -96,7 +96,7 @@ html {
     flex-direction:column; */
     text-align: -webkit-center;
     transition: 1s ease-in-out;
-    color: black;
+    color: #fdba44;
 }
 
 #tagline {
@@ -369,7 +369,11 @@ button:focus {
 }
 
 .bg-page {
-    background-color: #0070C0;
+    background: #0d4f88;
+}
+
+.bg-page a {
+    color: #ffe9a6;
 }
 
 .outlined-text {
@@ -383,4 +387,27 @@ button:focus {
 .tab-selected {
     background: #ffffff80;
     border-bottom: 2px solid #fff;
+}
+
+.btn-space {
+    background: #fdba44;
+    color: #0d4f88 !important;
+    border: 2px solid #ffd889;
+    font-weight: bold;
+    border-radius: 999px;
+    padding: 0.6rem 1.25rem;
+    transition: transform 0.15s ease-in-out, background 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    box-shadow: 0 4px 12px #00000040;
+}
+
+.btn-space:hover {
+    background: #ffcf73;
+    transform: translateY(-1px);
+    box-shadow: 0 7px 16px #0000004d;
+}
+
+.booking-gallery-image {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
 }

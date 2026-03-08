@@ -5,16 +5,16 @@ fetch(window.location.origin + "/navbar.html")
     .then(data => {
         document.querySelector("partial-navbar").innerHTML = data;
 
-        var tabCurrentMarkets = document.querySelector('#tab-currentMarkets');
+        var tabWhereToFindUs = document.querySelector('#tab-whereToFindUs');
         var tabMakeAReservation = document.querySelector('#tab-makeAReservation');
         var tabAboutUs = document.querySelector('#tab-aboutUs');
 
-        if (window.location.pathname == "/current-markets.html") {
-            tabCurrentMarkets.classList.add('tab-selected');
-            tabCurrentMarkets.classList.remove('tab-unselected');
+        if (window.location.pathname == "/where-to-find-us.html" || window.location.pathname == "/current-markets.html") {
+            tabWhereToFindUs.classList.add('tab-selected');
+            tabWhereToFindUs.classList.remove('tab-unselected');
         } else {
-            tabCurrentMarkets.classList.remove('tab-selected');
-            tabCurrentMarkets.classList.add('tab-unselected');
+            tabWhereToFindUs.classList.remove('tab-selected');
+            tabWhereToFindUs.classList.add('tab-unselected');
         }
         if (window.location.pathname == "/make-a-reservation.html") {
             tabMakeAReservation.classList.add('tab-selected');
