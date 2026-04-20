@@ -5,17 +5,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Estimate the cost of booking Mini Donauts for your private event in the Chicago west suburbs.">
     <link rel="icon" href="images/logo.jpg" title="Mini Donauts">
-    <title>Mini Donauts</title>
+    <title>Event Cost Calculator | Mini Donauts</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
     <link href="https://fonts.googleapis.com/css?family=Comfortaa:700" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.1/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
-
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="stylesheet" href="index.css">
-    
+    <script src="./navbar.js" type="text/javascript"></script>
+    <script src="./footer.js" type="text/javascript"></script>
+    <style>
+        .calc-label {
+            font-size: 0.95rem;
+            color: #ffe9a6;
+            margin-bottom: 0.35rem;
+        }
+        .calc-input {
+            background: #ffffff18;
+            border: 1px solid #ffffff55;
+            border-radius: 8px;
+            color: #fff;
+            padding: 0.45rem 0.75rem;
+            font-family: AstroSpace;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+        .calc-input:focus {
+            outline: none;
+            border-color: #fdba44;
+            background: #ffffff25;
+            color: #fff;
+        }
+        .cost-note {
+            font-size: 0.85rem;
+            color: #ffe9a6;
+            font-weight: normal;
+        }
+        .quote-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: Comfortaa, sans-serif;
+            font-size: 0.9rem;
+        }
+        .quote-table th, .quote-table td {
+            padding: 0.55rem 0.75rem;
+            text-align: center;
+            border: 1px solid #ffffff30;
+        }
+        .quote-table th {
+            background: #fdba44;
+            color: #0a3a6b;
+            font-weight: bold;
+        }
+        .quote-table td:first-child {
+            text-align: left;
+        }
+        .quote-table tr:nth-child(even) td {
+            background: #ffffff0d;
+        }
+        .price-cell {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
 </head>
 
 <body style="font-family: AstroSpace; color: #fdba44;">
@@ -23,137 +79,128 @@
         <div id="spinner"></div>
     </div>
     <div id="page">
-        <div id="header">
-            <div id="title" style="white-space: nowrap; font-size: 6rem;">
-                <a href="index.html">Mini Donauts</a>
-            </div>
-            <br>
-            <div id="links" class="row">
-                <a class="col" style="white-space: nowrap;" href="where-to-find-us.html">Where to Find Us</a>
-                <a class="col selectedNavItem" style="white-space: nowrap;">Event & Cost Calculator</a>
-                <a class="col" style="white-space: nowrap;" href="make-a-reservation.html">Book Us</a>
-                <!-- <a class="col" style="white-space: nowrap;" href="contactUs.html">Contact Us</a>
-                <a class="col" style="white-space: nowrap;" href="aboutUs.html">About Us</a> -->
+        <partial-navbar></partial-navbar>
+
+        <div id="middle" class="align-items-center py-5 my-5 bg-page">
+            <div class="container" style="max-width: 680px;">
+
+                <!-- Calculator Card -->
+                <div class="p-4 mb-4" style="background: #ffffff1f; border: 1px solid #ffffff55; border-radius: 12px; font-weight: normal;">
+                    <h1 class="mb-1" style="font-size: 1.7rem;">Event Cost Calculator</h1>
+                    <p class="cost-note mb-4">Enter your event zip code and guest count to get a pricing quote.</p>
+
+                    <div class="row g-4">
+                        <div class="col-6">
+                            <div class="calc-label">Zipcode of Event</div>
+                            <input id="event-zip" class="calc-input" type="text" maxlength="5" pattern="[0-9]{5}" value="60137" />
+                        </div>
+                        <div class="col-6">
+                            <div class="calc-label">Number of Guests</div>
+                            <input id="event-guests" class="calc-input" type="number" min="1" value="50" />
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex flex-wrap gap-3">
+                        <button class="btn btn-space" onclick="recalculateEventCosts()">Get Quote</button>
+                        <a class="btn btn-space" href="make-a-reservation.html">Book This Event</a>
+                    </div>
+                </div>
+
+                <!-- Quote Card -->
+                <div id="quote-section" style="display:none;" class="mb-4">
+                    <div style="background:#ffffff1f; border:1px solid #ffffff55; border-radius:12px; padding:1.25rem; font-weight:normal;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 style="font-size:1.3rem; margin:0;">Pricing Options</h2>
+                            <button class="btn btn-space btn-sm" onclick="downloadQuote()">⬇ Download Quote</button>
+                        </div>
+
+                        <!-- Captured as image -->
+                        <div id="quote-card" style="
+                            background: linear-gradient(145deg, #082f5c 0%, #0d4f88 55%, #124f7e 100%);
+                            border: 2px solid #fdba44;
+                            border-radius: 14px;
+                            padding: 1.5rem;
+                            font-family: Comfortaa, sans-serif;
+                            color: #fff;
+                        ">
+                            <!-- Header -->
+                            <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.25rem;">
+                                <img src="images/logo.jpg" crossorigin="anonymous" style="width:52px; height:52px; border-radius:50%; border:2px solid #fdba44; object-fit:cover;">
+                                <div>
+                                    <div style="color:#fdba44; font-size:1.35rem; font-weight:bold; line-height:1.1;">Mini Donauts</div>
+                                    <div style="color:#ffe9a6; font-size:0.78rem; margin-top:0.15rem;">Private Event Pricing Estimate</div>
+                                </div>
+                            </div>
+
+                            <!-- Event details -->
+                            <div id="q-event-info" style="
+                                background:#ffffff15;
+                                border:1px solid #ffffff30;
+                                border-radius:8px;
+                                padding:0.5rem 0.85rem;
+                                font-size:0.8rem;
+                                color:#ffe9a6;
+                                margin-bottom:1.25rem;
+                            ">—</div>
+
+                            <!-- Price table -->
+                            <table class="quote-table">
+                                <thead>
+                                    <tr>
+                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488; text-align:left;">Pricing Model</th>
+                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
+                                            1 Hour<br><span style="font-size:0.68rem; font-weight:normal;">50–75 guests</span>
+                                        </th>
+                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
+                                            2 Hours<br><span style="font-size:0.68rem; font-weight:normal;">76–150 guests</span>
+                                        </th>
+                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
+                                            3 Hours<br><span style="font-size:0.68rem; font-weight:normal;">151–225 guests</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;">
+                                            <div style="color:#ffe9a6; font-weight:bold;">All You Can Eat</div>
+                                            <div style="color:#ffffff99; font-size:0.72rem;">Host pays flat fee · unlimited donuts</div>
+                                        </td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-1">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-2">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-3">—</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;">
+                                            <div style="color:#ffe9a6; font-weight:bold;">Ticketed</div>
+                                            <div style="color:#ffffff99; font-size:0.72rem;">1 bag per guest · host pays ingredients + labor</div>
+                                        </td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-1">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-2">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-3">—</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;">
+                                            <div style="color:#ffe9a6; font-weight:bold;">Landing</div>
+                                            <div style="color:#ffffff99; font-size:0.72rem;">Host pays to show up · guests buy direct</div>
+                                        </td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-1">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-2">—</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-3">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div style="margin-top:1rem; text-align:right; color:#ffffff55; font-size:0.72rem;">
+                                minidonauts.com · estimates only, subject to change
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-        <div id="middle" class="align-items-center py-5 my-5 bg-light">
 
-
-
-
-
-
-
-
-
-            <div class="col">
-                <div class="col">
-                    <div class="form-label">Zipcode Of Event*</div>
-                    <div class="">
-                        <input id="event-zip" type="text" maxlength="5" pattern="[0-9]{5}" style="width: 4.5rem;text-align: center;" onchange="recalculateEventCosts()" value="60137" />
-                    </div>
-                </div>
-                <div class="col pt-5">
-                    <div class="form-label">Hours Of Unlimited Donuts For Event*</div>
-                    <div class="">
-                        <input id="event-hours" type="text" maxlength="1" pattern="[0-9]{1}" style="width: 1.5rem;text-align: center;" onchange="recalculateEventCosts()" value="1" />
-                    </div>
-                </div>
-                <div class="col pt-5">
-                    <div class="form-label">Day Of The Week For Event*</div>
-                    <div>
-                        <select id="event-day-of-week" style="height: 2rem;" onchange="recalculateEventCosts()">
-                            <option value="Saturday">Saturday</option>
-                            <option value="Sunday">Sunday</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col pt-5">
-                    <div class="form-label">Donut Line Starts At*</div>
-                    <div>
-                        <select id="event-start" style="height: 2rem; text-align: right;" onchange="recalculateEventCosts()">
-                            <option value=8> 8:00 AM</option>
-                            <option value=8.5> 8:30 AM</option>
-                            <option value=9> 9:00 AM</option>
-                            <option value=9.5> 9:30 AM</option>
-                            <option value=10>10:00 AM</option>
-                            <option value=10.5>10:30 AM</option>
-                            <option value=11>11:00 AM</option>
-                            <option value=11.5>11:30 AM</option>
-                            <option value=12>12:00 PM</option>
-                            <option value=12.5>12:30 PM</option>
-                            <option value=13> 1:00 PM</option>
-                            <option value=13.5> 1:30 PM</option>
-                            <option value=14> 2:00 PM</option>
-                            <option value=14.5> 2:30 PM</option>
-                            <option value=15> 3:00 PM</option>
-                            <option value=15.5> 3:30 PM</option>
-                            <option value=16> 4:00 PM</option>
-                            <option value=16.5> 4:30 PM</option>
-                            <option value=17> 5:00 PM</option>
-                            <option value=17.5> 5:30 PM</option>
-                            <option value=18> 6:00 PM</option>
-                            <option value=18.5 selected> 6:30 PM</option>
-                            <option value=19> 7:00 PM</option>
-                            <option value=19.5> 7:30 PM</option>
-                            <option value=20> 8:00 PM</option>
-                            <option value=20.5> 8:30 PM</option>
-                            <option value=21> 9:00 PM</option>
-                            <option value=21.5> 9:30 PM</option>
-                            <option value=22>10:00 PM</option>
-                            <option value=22.5>10:30 PM</option>
-                            <option value=23>11:00 PM</option>
-                            <option value=23.5>11:30 PM</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col pt-5 mt-5 mx-5" style="border-top: 5px solid black; font-size: xx-large;">
-                    <div class="form-label">Total Estimated Cost</div>
-                    <div style="color: green; font-size: xxx-large;" id="event-cost"></div>
-                    <div class="d-none" id="tooLateFeeWarning" style="color: blue; font-size: large;">Note: There is a $500 fee being applied because this conflicts with a market timeline.<br/>Moving the time ealier could remove this fee.</div>
-                    <div class="d-none" id="tooEarlyFeeWarning" style="color: blue; font-size: large;">Note: There is a $500 fee being applied because this conflicts with a market timeline.<br/>Moving the time later could remove this fee.</div>
-                </div>
-                <div class="col pt-5">
-                    <button onclick="location.href='make-a-reservation.html'" style="font-size: x-large;">Make A Reservation</button>
-                </div>
-            </div>
-
-
-
-
-
-
-
-
-
-
-        </div>
-        <div id="footer">
-            <div class="col align-items-center">
-                <img src="images/logo.jpg" style="width: 5rem;">
-                <br> Mini donuts with flavors that are out of this world
-            </div>
-            <div class="row pt-4 align-items-center">
-                <div class="col">
-                    <a href="https://www.facebook.com/people/Mini-Donauts/100075852761548/">
-                        <img src="images/facebook-logo.webp" style="width: 5rem;">
-                        <br> facebook
-                    </a>
-                </div>
-                <div class="col">
-                    <a href="https://www.instagram.com/minidonauts/">
-                        <img src="images/Instagram_logo.webp" style="width: 5rem;">
-                        <br> Instagram
-                    </a>
-                </div>
-                <div class="col">
-                    <a href="https://g.page/r/CXoHjSUIe4pSEAE">
-                        <img src="images/google-my-business-logo.jpg" style="width: 11rem;">
-                        <br> Google My Business
-                    </a>
-                </div>
-            </div>
-        </div>
+        <partial-footer></partial-footer>
     </div>
 
     <script src="index.js" type="text/javascript"></script>

@@ -1,94 +1,109 @@
+function downloadQuote() {
+    const card = document.getElementById('quote-card');
+    html2canvas(card, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'mini-donauts-quote.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
 let eventZipCode;
 let eventDrivingTime;
 let eventDrivingDistance;
 
+// Cost constants
+const CAR_CENTS_PER_MILE = 0.22;
+const GEN_GAL_PER_HR     = 4 / 6;
+const GAS_PRICE          = 4;
+const MIX_BAG_COST       = 87.49;
+const BATCHES_PER_BAG    = 21;
+const OIL_COST           = 68.49;
+const BATCHES_PER_OIL    = 18;
+const WATER_CASE_COST    = 6.89 * 1.25;
+const WATER_PER_CASE     = 35;
+const SERVINGS_PER_BATCH  = 14;  // bags of donuts per batch of mix
+const BAGS_PER_HOUR       = 75;  // realistic serving capacity
+const CAPACITY_PER_HOUR   = 75;  // max guests per hour for Ticketed
+const SETUP_HRS          = 1.5;
+const TEARDOWN_HRS       = 1.5;
+const WAGE_PER_HR        = 45.12 * 2;  // 2 chefs
+
+function nonServiceHours() {
+    return SETUP_HRS + TEARDOWN_HRS + eventDrivingTime * 2;
+}
+
+function travelCost(serviceHours) {
+    const carGas = CAR_CENTS_PER_MILE * eventDrivingDistance * 2;
+    const genGas = (SETUP_HRS + serviceHours + TEARDOWN_HRS) * GEN_GAL_PER_HR * GAS_PRICE;
+    return carGas + genGas;
+}
+
+function ingredientCost(batches) {
+    const mix   = (MIX_BAG_COST / BATCHES_PER_BAG) * batches;
+    const oil   = (OIL_COST / BATCHES_PER_OIL) * batches;
+    const water = (WATER_CASE_COST / WATER_PER_CASE) * batches;
+    return mix + oil + water;
+}
+
+// AYCE: full production capacity, host pays everything
+function calculateAYCE(hours) {
+    const batches      = Math.ceil(BAGS_PER_HOUR * hours / SERVINGS_PER_BATCH);
+    const totalHrsAway = hours + nonServiceHours();
+    return travelCost(hours) + ingredientCost(batches) + totalHrsAway * WAGE_PER_HR;
+}
+
+// Ticketed: exactly 1 bag per guest, ingredients based on headcount
+function calculateTicketed(hours, guests) {
+    const batches      = Math.ceil(guests / SERVINGS_PER_BATCH);
+    const totalHrsAway = hours + nonServiceHours();
+    return travelCost(hours) + ingredientCost(batches) + totalHrsAway * WAGE_PER_HR;
+}
+
+// Landing: host pays travel + setup/teardown labor only — service time earned via direct sales
+function calculateLanding(hours) {
+    return travelCost(hours) + nonServiceHours() * WAGE_PER_HR;
+}
+
 function recalculateEventCosts() {
-    let currEventZipCode = $("#event-zip").val() == "" ? "60137" : $("#event-zip").val();
-    let eventHours = Number($("#event-hours").val() == "" ? "1" : $("#event-hours").val());
-    $("#event-zip").val(currEventZipCode);
-    $("#event-hours").val(eventHours);
+    let currZip = $("#event-zip").val().trim();
+    if (currZip.length !== 5 || isNaN(currZip)) return;
+    const guests = Math.max(1, Number($("#event-guests").val()) || 50);
 
-    if (eventZipCode != currEventZipCode) {
-        var xmlHttp = new XMLHttpRequest();
-        xmlHttp.open("GET", "https://dev.virtualearth.net/REST/V1/Routes/Driving?o=xml&wp.0=60515&wp.1=" + currEventZipCode + "&avoid=minimizeTolls&distanceUnit=Mile&key=AivfjGjefdrScaP3qQkrt8yfJqbhMz86eKb64S-QtpDCpDXggu-t78l872rlgDrL", false); // false for synchronous request
-        xmlHttp.send(null);
-
-        let xmlDoc = xmlHttp.responseXML;
-        eventDrivingDistance = Number(xmlDoc.getElementsByTagName('TravelDistance')[0].innerHTML);
-        let eventDrivingSeconds = Number(xmlDoc.getElementsByTagName('TravelDuration')[0].innerHTML);
-        eventDrivingTime = eventDrivingSeconds / 60 / 60;
+    if (eventZipCode !== currZip) {
+        try {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("GET", "https://dev.virtualearth.net/REST/V1/Routes/Driving?o=xml&wp.0=60559&wp.1=" + currZip + "&avoid=minimizeTolls&distanceUnit=Mile&key=AivfjGjefdrScaP3qQkrt8yfJqbhMz86eKb64S-QtpDCpDXggu-t78l872rlgDrL", false);
+            xmlHttp.send(null);
+            const xmlDoc = xmlHttp.responseXML;
+            eventDrivingDistance = Number(xmlDoc.getElementsByTagName('TravelDistance')[0].innerHTML);
+            eventDrivingTime     = Number(xmlDoc.getElementsByTagName('TravelDuration')[0].innerHTML) / 3600;
+            eventZipCode = currZip;
+        } catch (e) {
+            if (eventDrivingDistance == null) {
+                eventDrivingDistance = 20;
+                eventDrivingTime = 0.5;
+            }
+        }
     }
 
-    let setupHours = 1.5;
-    let taredownHours = 1.5;
-    let totalHoursAway = eventHours + setupHours + taredownHours + (eventDrivingTime * 2);
-    let eventStart = Number($("#event-start").val());
-    let leaveBy = eventStart - setupHours - eventDrivingTime;
-    let backBy = eventStart + eventHours + taredownHours + eventDrivingTime;
-    let bagsPerHour = 1200 / 12;
-    let avgServing = bagsPerHour * eventHours;
-    let servingPerMix = 14;
-    let batchesNeeded = Math.ceil(avgServing / servingPerMix);
+    const fmt = (n) => `$${Math.ceil(n)}`;
 
-    //#region Costs
-    let carDollarPerMile = 0.22;
-    let costCarGas = carDollarPerMile * eventDrivingDistance * 2;
-    let generatorDollarPerHr = 4 / 6;
-    let gasPrice = 4;
-    let costGeneratorGas = (2 + eventHours) * generatorDollarPerHr * gasPrice;
-    let batchesPerMixBag = 21;
-    let mixBagCost = 87.49;
-    let costDonutMix = (mixBagCost / batchesPerMixBag) * batchesNeeded;
-    let batchesPerOil = 3 * 6;
-    let oilCost = 68.49;
-    let costOil = (oilCost / batchesPerOil) * batchesNeeded;
-    let waterBottlesPerCase = 35;
-    let waterBottlesCaseCost = 6.89 * 1.25;
-    let costWater = (waterBottlesCaseCost / waterBottlesPerCase) * batchesNeeded;
+    $('#q-ayce-1').text(fmt(calculateAYCE(1)));
+    $('#q-ayce-2').text(fmt(calculateAYCE(2)));
+    $('#q-ayce-3').text(fmt(calculateAYCE(3)));
 
+    $('#q-tick-1').text(guests <= CAPACITY_PER_HOUR * 1 ? fmt(calculateTicketed(1, guests)) : '—');
+    $('#q-tick-2').text(guests <= CAPACITY_PER_HOUR * 2 ? fmt(calculateTicketed(2, guests)) : '—');
+    $('#q-tick-3').text(guests <= CAPACITY_PER_HOUR * 3 ? fmt(calculateTicketed(3, guests)) : '—');
 
-    let dayOfTheWeek = $("#event-day-of-week").val();
-    let relatedAvailabilityStart = 0;
-    let relatedAvailabilityEnd = 24;
-    switch (dayOfTheWeek) {
-        case "Saturday":
-            relatedAvailabilityStart = 16;
-            relatedAvailabilityEnd = 22;
-            break;
-        case "Sunday":
-            relatedAvailabilityStart = 14.5;
-            relatedAvailabilityEnd = 23.5;
-            break;
-    }
-    let tooEarly = relatedAvailabilityStart > leaveBy;
-    let tooLate = backBy > relatedAvailabilityEnd;
-    let opportunityCostMultiplier = 0;
-    if (tooEarly) {
-        opportunityCostMultiplier++;
-        $("#tooEarlyFeeWarning").removeClass("d-none");
-    }else{
-        $("#tooEarlyFeeWarning").addClass("d-none");
-    }
-    if (tooLate) {
-        opportunityCostMultiplier++;
-        $("#tooLateFeeWarning").removeClass("d-none");
-    }else{
-        $("#tooLateFeeWarning").addClass("d-none");
-    }
-    let costOpportunityCost = 496.33 * opportunityCostMultiplier;
+    $('#q-land-1').text(fmt(calculateLanding(1)));
+    $('#q-land-2').text(fmt(calculateLanding(2)));
+    $('#q-land-3').text(fmt(calculateLanding(3)));
 
+    $('#q-event-info').text(`Zip: ${currZip}  ·  ${eventDrivingDistance.toFixed(0)} miles from Westmont  ·  ${guests} guests`);
 
-    //#endregion
-    let operatingCost = costCarGas + costGeneratorGas + costDonutMix + costOil + costWater + costOpportunityCost;
-
-    let goalWageBeforeTaxes = 45.12;
-    let chefsEmployeed = 2;
-    let hourlyRate = goalWageBeforeTaxes * chefsEmployeed;
-
-    let eventCost = (totalHoursAway * hourlyRate) + operatingCost;
-    let eventCostRounded = Math.ceil(eventCost / 100) * 100;
-
-    $('#event-cost').text(`$${eventCostRounded}.00`);
+    $('#quote-section').show();
 }
 
 recalculateEventCosts();
