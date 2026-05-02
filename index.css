@@ -3,8 +3,15 @@ html {
     padding: 0px;
     margin: 0px;
     font-weight: bold;
-    background: rgb(0, 0, 0);
+    background: #145da4;
     scroll-behavior: smooth;
+}
+
+:root {
+    --truck-blue-base: #1f74dc;
+    --truck-blue-deep: #145ab5;
+    --truck-blue-glow: #3ba2ff;
+    --truck-star-gold: #f9bf58;
 }
 
 #loading {
@@ -82,12 +89,39 @@ html {
 #page {
     width: 100%;
     height: 100%;
-    background: linear-gradient(0deg, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0)), url("images/space.png");
-    background-size: 50% auto;
+    position: relative;
+    overflow: hidden;
+    background: #1f74dc;
     display: flex;
     justify-content: center;
     flex-direction: column;
     transition: 1s ease-in-out;
+}
+
+#page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: none;
+    z-index: 0;
+}
+
+#page::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='320' viewBox='0 0 420 320'%3E%3Cpolygon points='88,46 95,67 117,67 99,80 106,101 88,88 70,101 77,80 59,67 81,67' fill='%23d79b33'/%3E%3Cpolygon points='318,208 323,224 340,224 326,234 331,250 318,240 305,250 310,234 296,224 313,224' fill='%23d79b33'/%3E%3C/svg%3E");
+    background-size: 420px 320px;
+    background-position: 0 0;
+    opacity: 0.50;
+    z-index: 0;
+}
+
+#page > * {
+    position: relative;
+    z-index: 1;
 }
 
 #middle {
@@ -97,6 +131,8 @@ html {
     text-align: -webkit-center;
     transition: 1s ease-in-out;
     color: #fdba44;
+    position: relative;
+    z-index: 1;
 }
 
 #tagline {
@@ -369,7 +405,8 @@ button:focus {
 }
 
 .bg-page {
-    background: #0d4f88;
+    background: #0f3f79a8;
+    backdrop-filter: saturate(1.05);
 }
 
 .bg-page a {

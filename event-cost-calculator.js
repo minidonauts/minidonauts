@@ -1,4 +1,4 @@
-function downloadQuote() {
+﻿function downloadQuote() {
     const card = document.getElementById('quote-card');
     html2canvas(card, { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
         const link = document.createElement('a');
@@ -6,6 +6,30 @@ function downloadQuote() {
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
+}
+
+function downloadBusinessCardFront() {
+    const card = document.getElementById('business-card-front');
+    html2canvas(card, { scale: 3, useCORS: true, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'mini-donauts-business-card-front.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+function downloadBusinessCardBack() {
+    const card = document.getElementById('business-card-back');
+    html2canvas(card, { scale: 3, useCORS: true, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'mini-donauts-business-card-back.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+function downloadBusinessCard() {
+    downloadBusinessCardFront();
 }
 
 let eventZipCode;
@@ -60,7 +84,7 @@ function calculateTicketed(hours, guests) {
     return travelCost(hours) + ingredientCost(batches) + totalHrsAway * WAGE_PER_HR;
 }
 
-// Landing: host pays travel + setup/teardown labor only — service time earned via direct sales
+// Landing: host pays travel + setup/teardown labor only; service time earned via direct sales
 function calculateLanding(hours) {
     return travelCost(hours) + nonServiceHours() * WAGE_PER_HR;
 }
@@ -93,17 +117,19 @@ function recalculateEventCosts() {
     $('#q-ayce-2').text(fmt(calculateAYCE(2)));
     $('#q-ayce-3').text(fmt(calculateAYCE(3)));
 
-    $('#q-tick-1').text(guests <= CAPACITY_PER_HOUR * 1 ? fmt(calculateTicketed(1, guests)) : '—');
-    $('#q-tick-2').text(guests <= CAPACITY_PER_HOUR * 2 ? fmt(calculateTicketed(2, guests)) : '—');
-    $('#q-tick-3').text(guests <= CAPACITY_PER_HOUR * 3 ? fmt(calculateTicketed(3, guests)) : '—');
+    $('#q-tick-1').text(guests <= CAPACITY_PER_HOUR * 1 ? fmt(calculateTicketed(1, guests)) : '-');
+    $('#q-tick-2').text(guests <= CAPACITY_PER_HOUR * 2 ? fmt(calculateTicketed(2, guests)) : '-');
+    $('#q-tick-3').text(guests <= CAPACITY_PER_HOUR * 3 ? fmt(calculateTicketed(3, guests)) : '-');
 
     $('#q-land-1').text(fmt(calculateLanding(1)));
     $('#q-land-2').text(fmt(calculateLanding(2)));
     $('#q-land-3').text(fmt(calculateLanding(3)));
 
-    $('#q-event-info').text(`Zip: ${currZip}  ·  ${eventDrivingDistance.toFixed(0)} miles from Westmont  ·  ${guests} guests`);
+    $('#q-event-info').text(`Zip: ${currZip}  •  ${eventDrivingDistance.toFixed(0)} miles from Westmont  •  ${guests} guests`);
 
     $('#quote-section').show();
+    $('#business-card-section').show();
 }
 
 recalculateEventCosts();
+
