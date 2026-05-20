@@ -32,6 +32,16 @@ function downloadBusinessCard() {
     downloadBusinessCardFront();
 }
 
+function downloadMarketMenu() {
+    const card = document.getElementById('market-menu-card');
+    html2canvas(card, { scale: 3, useCORS: true, backgroundColor: null }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'mini-donauts-market-menu.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
 let eventZipCode;
 let eventDrivingTime;
 let eventDrivingDistance;
@@ -129,6 +139,7 @@ function recalculateEventCosts() {
 
     $('#quote-section').show();
     $('#business-card-section').show();
+    $('#market-menu-section').show();
 }
 
 recalculateEventCosts();

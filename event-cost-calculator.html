@@ -132,6 +132,60 @@
             color: #ffe9a6;
             margin-bottom: 1.25rem;
         }
+        .market-menu-card {
+            background: #1f74dc;
+            border: 2px solid #fdba44;
+            border-radius: 0;
+            font-family: AstroSpace, Comfortaa, sans-serif;
+            color: #fff;
+            aspect-ratio: 2 / 3;
+            width: 100%;
+            max-width: 360px;
+            margin: 0 auto;
+            box-shadow: 0 0 22px #00000080;
+            position: relative;
+            overflow: hidden;
+        }
+        .market-menu-content {
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: center;
+        }
+        .market-menu-group {
+            background: #0f3f79a8;
+            border: 1px solid #ffffff38;
+            border-radius: 10px;
+            padding: 0.7rem 0.8rem;
+        }
+        .market-price-row {
+            display: grid;
+            grid-template-columns: 6.5rem 7rem 1fr;
+            align-items: baseline;
+            font-size: 0.8rem;
+            color: #fff;
+            margin-top: 0.35rem;
+        }
+        .market-size-label {
+            text-align: left;
+            font-size: 0.72rem;
+            border-right: 1px solid #ffffff40;
+            padding-right: 0.45rem;
+        }
+        .market-size-count {
+            text-align: right;
+            border-right: 1px solid #ffffff40;
+            padding-right: 1rem;
+        }
+        .market-price-value {
+            color: #fdba44;
+            font-size: 1.25rem;
+            text-align: right;
+        }
     </style>
 </head>
 
@@ -352,6 +406,69 @@
                                     <div class="loyalty-stamp-box"></div>
                                 </div>
                                 <div style="color:#fdba44; font-size:0.58rem; margin-top:0.5rem;">10 STAMPS = FREE MINI DONAUTS</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Menu Builder -->
+                <div id="market-menu-section" style="display:none;" class="mb-4">
+                    <div style="background:#ffffff1f; border:1px solid #ffffff55; border-radius:12px; padding:1.25rem; font-weight:normal;">
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                            <h2 style="font-size:1.3rem; margin:0;">Farmers Market Menu Builder</h2>
+                            <button class="btn btn-space btn-sm" onclick="downloadMarketMenu()">Download Menu</button>
+                        </div>
+                        <p class="cost-note mb-3">Vertical menu at 2:3 ratio for market signage.</p>
+
+                        <div id="market-menu-card" class="market-menu-card">
+                            <div style="position:absolute; inset:0; background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='170' viewBox='0 0 220 170'%3E%3Cpolygon points='44,24 47,33 56,33 49,38 52,47 44,42 36,47 39,38 32,33 41,33' fill='%23d79b33'/%3E%3Cpolygon points='138,64 141,72 149,72 143,77 145,85 138,80 131,85 133,77 127,72 135,72' fill='%23d79b33'/%3E%3Cpolygon points='92,124 95,132 103,132 97,137 99,145 92,140 85,145 87,137 81,132 89,132' fill='%23d79b33'/%3E%3Cpolygon points='188,122 190,129 197,129 192,133 194,140 188,136 182,140 184,133 179,129 186,129' fill='%23d79b33'/%3E%3C/svg%3E&quot;); background-size:270px 210px; opacity:0.5;"></div>
+                            <div class="market-menu-content">
+                                <div style="display:flex; align-items:center; justify-content:center; gap:0.55rem;">
+                                    <img src="images/logo.jpg" crossorigin="anonymous" alt="Mini Donauts logo" style="width:62px; height:62px; border-radius:50%; object-fit:cover;">
+                                    <div style="color:#fdba44; font-size:1.9rem; font-weight:bold; line-height:1;">MINI DONAUTS</div>
+                                </div>
+
+                                <div class="market-menu-group">
+                                    <div style="color:#fdba44; font-size:1rem; font-weight:bold;">SIZES</div>
+                                    <div class="market-price-row">
+                                        <span class="market-size-label">PLUTO</span>
+                                        <span class="market-size-count">4 DONUTS</span>
+                                        <span class="market-price-value">$3</span>
+                                    </div>
+                                    <div class="market-price-row">
+                                        <span class="market-size-label">EARTH</span>
+                                        <span class="market-size-count">9 DONUTS</span>
+                                        <span class="market-price-value">$6</span>
+                                    </div>
+                                    <div class="market-price-row">
+                                        <span class="market-size-label">SUPERNOVA</span>
+                                        <span class="market-size-count">15 DONUTS</span>
+                                        <span class="market-price-value">$9</span>
+                                    </div>
+                                    <div class="market-price-row">
+                                        <span class="market-size-label">GALAXY</span>
+                                        <span class="market-size-count">35 DONUTS</span>
+                                        <span class="market-price-value">$18</span>
+                                    </div>
+                                </div>
+
+                                <div class="market-menu-group">
+                                    <div style="color:#fdba44; font-size:1rem; font-weight:bold;">FREE TOPPINGS</div>
+                                    <div style="color:#fff; font-size:0.76rem; margin-top:0.22rem;">POWDERED SUGAR</div>
+                                    <div style="color:#fff; font-size:0.76rem;">CINNAMON SUGAR</div>
+                                </div>
+
+                                <div class="market-menu-group">
+                                    <div style="color:#fdba44; font-size:1rem; font-weight:bold;">+$1 TOPPING UPGRADE</div>
+                                    <div style="color:#fff; font-size:0.76rem; margin-top:0.22rem;">CHOCOLATE SAUCE WITH:</div>
+                                    <div style="color:#fff; font-size:0.76rem;">M&amp;M'S • OREOS • SPRINKLES</div>
+                                </div>
+
+                                <div style="color:#ffe9a6; font-size:0.66rem;">LOYALTY STAMPS ONLY FOR EARTH + SUPERNOVA</div>
+                                <div style="display:flex; align-items:center; justify-content:center; gap:0.45rem; color:#ffffffc7; font-size:0.67rem;">
+                                    <span>MINIDONAUTS.COM</span>
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https%3A%2F%2Fminidonauts.com" crossorigin="anonymous" alt="QR code to minidonauts.com" style="width:1.75rem; height:1.75rem; border-radius:0.2rem; border:1px solid #ffffff55; background:#fff;">
+                                </div>
                             </div>
                         </div>
                     </div>
