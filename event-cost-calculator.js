@@ -34,9 +34,15 @@ function downloadBusinessCard() {
 
 function downloadMarketMenu() {
     const card = document.getElementById('market-menu-card');
-    html2canvas(card, { scale: 3, useCORS: true, backgroundColor: null }).then(canvas => {
+    const targetWidthPx = 3600;
+    const scaleForPrint = targetWidthPx / card.offsetWidth;
+    html2canvas(card, {
+        scale: scaleForPrint,
+        useCORS: true,
+        backgroundColor: null
+    }).then(canvas => {
         const link = document.createElement('a');
-        link.download = 'mini-donauts-market-menu.png';
+        link.download = 'mini-donauts-market-menu-2x3-print.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
