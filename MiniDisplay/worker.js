@@ -112,6 +112,16 @@ export default {
       });
     }
 
+    function pickTestName() {
+      const names = [
+        "Emma", "Liam", "Olivia", "Noah", "Ava", "Elijah", "Sophia", "James",
+        "Isabella", "Oliver", "Mia", "William", "Charlotte", "Benjamin", "Amelia",
+        "Lucas", "Harper", "Henry", "Evelyn", "Alexander", "Luna", "Mason",
+        "Camila", "Ethan", "Penelope", "Daniel", "Riley", "Jacob", "Nora", "Logan"
+      ];
+      return names[Math.floor(Math.random() * names.length)];
+    }
+
     if (url.pathname === "/square/locations") {
       const requestedEnv =
         body?.environment === "sandbox" || body?.environment === "production"
@@ -331,6 +341,144 @@ export default {
       }
 
       return new Response(JSON.stringify({ ok: true, orderId, action: "PREPARED" }), {
+        headers: corsHeaders,
+      });
+    }
+
+    if (url.pathname === "/square/orders/reopen") {
+      const orderId = String(body?.orderId || "").trim();
+      const locationId = String(body?.locationId || "").trim();
+      const environment = getEnvFromBody();
+
+      if (!orderId || !locationId) {
+        return new Response(JSON.stringify({ ok: false, error: "orderId and locationId required" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      const base = squareBase(environment);
+      const getResult = await getOrder(base, orderId);
+      if (!getResult.resp.ok) {
+        const detail = getResult.data?.errors?.[0]?.detail || `Could not fetch order (${getResult.resp.status})`;
+        return new Response(JSON.stringify({ ok: false, error: detail }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      const liveVersion = Number(getResult.data?.order?.version ?? 0);
+      const fulfillmentUid = getResult.data?.order?.fulfillments?.[0]?.uid ?? null;
+      if (!fulfillmentUid) {
+        return new Response(JSON.stringify({ ok: false, error: "No fulfillment on order" }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      const putResult = await updateOrder(base, orderId, {
+        location_id: locationId,
+        version: liveVersion,
+        fulfillments: [{ uid: fulfillmentUid, state: "PROPOSED" }],
+      });
+
+      if (!putResult.resp.ok) {
+        const detail =
+          putResult.data?.errors?.[0]?.detail ||
+          putResult.data?.errors?.[0]?.code ||
+          `Reopen failed (${putResult.resp.status})`;
+        return new Response(JSON.stringify({ ok: false, error: String(detail) }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, orderId, action: "PROPOSED" }), {
+        headers: corsHeaders,
+      });
+    }
+
+    if (url.pathname === "/square/create-test-order") {
+      const locationId = String(body?.locationId || "").trim();
+      const environment = getEnvFromBody();
+      if (environment !== "sandbox") {
+        return new Response(JSON.stringify({ ok: false, error: "create-test-order is sandbox only" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+      if (!locationId) {
+        return new Response(JSON.stringify({ ok: false, error: "locationId required" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+
+      const base = squareBase(environment);
+      const customerName = pickTestName();
+      const lineItems = [
+        {
+          name: "Mini Donuts",
+          quantity: String(Math.floor(Math.random() * 2) + 1),
+          base_price_money: { amount: 600, currency: "USD" },
+          note: ["glazed", "cinnamon sugar", "powdered sugar", "chocolate"][Math.floor(Math.random() * 4)],
+        }
+      ];
+      const totalAmount = lineItems.reduce((sum, li) => {
+        return sum + Number(li.base_price_money?.amount || 0) * Number(li.quantity || 1);
+      }, 0);
+
+      const createOrder = await squareFetch(base, "/v2/orders", "POST", {
+        idempotency_key: crypto.randomUUID(),
+        order: {
+          location_id: locationId,
+          ticket_name: customerName,
+          line_items: lineItems,
+          fulfillments: [{
+            type: "PICKUP",
+            state: "PROPOSED",
+            pickup_details: {
+              recipient: { display_name: customerName },
+              schedule_type: "ASAP",
+            },
+          }],
+        },
+      });
+
+      if (!createOrder.resp.ok) {
+        const detail = createOrder.data?.errors?.[0]?.detail || `Create order failed (${createOrder.resp.status})`;
+        return new Response(JSON.stringify({ ok: false, error: detail }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      const orderId = String(createOrder.data?.order?.id || "").trim();
+      if (!orderId) {
+        return new Response(JSON.stringify({ ok: false, error: "Order created but missing order ID" }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      const createPayment = await squareFetch(base, "/v2/payments", "POST", {
+        idempotency_key: crypto.randomUUID(),
+        source_id: "CASH",
+        amount_money: { amount: totalAmount, currency: "USD" },
+        cash_details: { buyer_supplied_money: { amount: totalAmount, currency: "USD" } },
+        order_id: orderId,
+        location_id: locationId,
+      });
+
+      if (!createPayment.resp.ok) {
+        const detail = createPayment.data?.errors?.[0]?.detail || `Payment failed (${createPayment.resp.status})`;
+        return new Response(JSON.stringify({ ok: false, error: detail, orderId }), {
+          status: 500,
+          headers: corsHeaders,
+        });
+      }
+
+      return new Response(JSON.stringify({ ok: true, orderId, customerName }), {
         headers: corsHeaders,
       });
     }

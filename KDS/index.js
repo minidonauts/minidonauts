@@ -562,6 +562,57 @@
     }
   }
 
+  async function undoComplete(orderId) {
+    const idx = state.completedHistory.findIndex(function (o) { return o.id === orderId; });
+    if (idx < 0) return;
+    const historyOrder = state.completedHistory[idx];
+    const restored = {
+      id: historyOrder.id,
+      customerName: historyOrder.customerName || 'Order',
+      createdAt: historyOrder.createdAt || Date.now(),
+      fulfillmentState: 'PROPOSED',
+      itemLines: Array.isArray(historyOrder.itemLines) ? historyOrder.itemLines.slice() : [],
+      noteLines: Array.isArray(historyOrder.noteLines) ? historyOrder.noteLines.slice() : [],
+      line_items: []
+    };
+
+    state.completedHistory.splice(idx, 1);
+    state.orders = [restored].concat(state.orders.filter(function (o) { return o.id !== orderId; }));
+    state.selectedId = restored.id;
+    state.view = 'board';
+    setStatus('Undo complete: ticket restored to top.', 'ok');
+    saveKdsState();
+    render();
+
+    try {
+      await apiPost('/square/orders/reopen', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+    } catch (error) {
+      setStatus('Undo API failed (restored locally): ' + (error && error.message ? error.message : String(error)), 'error');
+      console.error('[KDS] undo complete failed', { orderId: orderId, error: String(error) });
+      render();
+    }
+  }
+
+  async function createTestOrder() {
+    if (state.environment !== 'sandbox') return;
+    if (!state.locationId) {
+      setStatus('Set location in /MiniDisplay settings first.', 'error');
+      render();
+      return;
+    }
+    setStatus('Creating sandbox test order...', '');
+    render();
+    try {
+      await apiPost('/square/create-test-order', { locationId: state.locationId, environment: state.environment });
+      setStatus('Sandbox test order created.', 'ok');
+      await fetchOrders();
+    } catch (error) {
+      setStatus('Create test order failed: ' + (error && error.message ? error.message : String(error)), 'error');
+      console.error('[KDS] create test order failed', { error: String(error) });
+      render();
+    }
+  }
+
   function markPickedUp(orderId) {
     delete state.notHereAt[orderId];
     saveKdsState();
@@ -682,6 +733,7 @@
         <div class="hint">Completed ${completedAgo} ago | Wait at completion: ${orderWait}</div>
         <div class="detail-items">${itemHtml}${notesHtml}</div>
         <div class="actions">
+          <button class="action warn" data-action="undo-complete" data-order-id="${order.id}">Undo Complete</button>
           <button class="action" data-action="back-live">Back to Live</button>
         </div>
       </div>`;
@@ -722,6 +774,9 @@
             <span class="title">Mini Donauts KDS</span>
           </button>
           <div style="display:flex; gap:10px; align-items:center;">
+            ${state.environment === 'sandbox'
+              ? '<button id="create-test-order" class="action" style="padding:6px 12px;">Create Test Order</button>'
+              : ''}
             <button id="open-history" class="action" style="padding:6px 12px;">${state.view === 'history' ? 'Back to Live' : 'Order History'}</button>
             <span class="pill">${state.environment.toUpperCase()} | ${state.locationId || 'NO LOCATION'} | Sync ${lastSyncAge == null ? 'never' : (lastSyncAge + 's ago')}</span>
           </div>
@@ -785,6 +840,7 @@
           return void render();
         }
         if (action === 'back-live') { state.view = 'board'; return void render(); }
+        if (action === 'undo-complete') return void undoComplete(orderId);
         if (!orderId) return;
         if (action === 'complete') return void markComplete(orderId);
         if (action === 'not-here') return void markNotHere(orderId);
@@ -802,6 +858,13 @@
           state.selectedId = state.orders[0] ? state.orders[0].id : '';
         }
         render();
+      });
+    }
+
+    const createTestOrderBtn = document.querySelector('#create-test-order');
+    if (createTestOrderBtn) {
+      createTestOrderBtn.addEventListener('click', function () {
+        void createTestOrder();
       });
     }
   }
