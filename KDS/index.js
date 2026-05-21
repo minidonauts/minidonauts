@@ -388,7 +388,7 @@
 
   function classify(order) {
     if (state.notHereAt[order.id]) return 'not-here';
-    return order.fulfillmentState === 'PREPARED' ? 'ready' : 'open';
+    return order.fulfillmentState === 'PREPARED' ? 'not-here' : 'open';
   }
 
   function deriveOrderItems(order) {
@@ -573,8 +573,8 @@
     const cards = orders.map(function (o) {
       const waitMs = Date.now() - (o.createdAt || Date.now());
       const waitClass = isUrgent(o) ? 'wait urgent' : 'wait';
-      const badgeClass = cls === 'not-here' ? 'b-nh' : (cls === 'ready' ? 'b-ready' : 'b-open');
-      const badgeText = cls === 'not-here' ? 'not here' : (cls === 'ready' ? 'ready' : 'open');
+      const badgeClass = cls === 'not-here' ? 'b-nh' : 'b-open';
+      const badgeText = cls === 'not-here' ? 'not here' : 'open';
       const active = state.selectedId === o.id ? ' active' : '';
       const nhWait = cls === 'not-here' && state.notHereAt[o.id]
         ? 'Pickup wait ' + fmtWait(Date.now() - state.notHereAt[o.id])
