@@ -282,10 +282,22 @@
     const s = readSettings();
     const env = s.environment === 'production' ? 'production' : 'sandbox';
     if (!s.locationId) return { orders: [], avgWaitMs: s.defaultAvgWaitSec * 1000 };
+    const now = new Date();
+    const day = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0')
+    ].join('-');
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+    const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
 
     const body = await proxyPost('/square/orders', {
       locationId: s.locationId,
-      environment: env
+      environment: env,
+      includeKdsQueue: true,
+      day: day,
+      dayStart: dayStart,
+      dayEnd: dayEnd
     });
 
     const defaultAvgWaitMs = s.defaultAvgWaitSec * 1000;
@@ -471,8 +483,12 @@
   }
 
   function renderOrders(orders, avgWaitMs) {
-    const ready = orders.filter(function (o) { return o.fulfillmentState === 'PREPARED'; });
-    const waiting = orders.filter(function (o) { return o.fulfillmentState !== 'PREPARED'; });
+    const ready = orders.filter(function (o) {
+      return String(o.status || '') === 'NOT_HERE' || String(o.fulfillmentState || '') === 'PREPARED';
+    });
+    const waiting = orders.filter(function (o) {
+      return !(String(o.status || '') === 'NOT_HERE' || String(o.fulfillmentState || '') === 'PREPARED');
+    });
     const now = Date.now();
     const urgentMs = 10 * 60 * 1000;
 

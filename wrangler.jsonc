@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "minidonauts-minidisplay-proxy",
+  "main": "MiniDisplay/worker.js",
+  "compatibility_date": "2026-05-29",
+  "kv_namespaces": [
+    {
+      "binding": "KDS_QUEUE",
+      "id": "259b6099ef084aec8bbaabf40ca9e6aa"
+    }
+  ]
+}

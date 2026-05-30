@@ -316,6 +316,7 @@
     selectedId: '',
     notHereAt: {},
     completedHistory: [],
+    recalledOrders: [],
     selectedHistoryId: '',
     view: 'board',
     status: '',
@@ -348,17 +349,19 @@
       const parsed = JSON.parse(localStorage.getItem(KDS_STATE_KEY) || '{}');
       return {
         notHereAt: parsed && typeof parsed.notHereAt === 'object' ? parsed.notHereAt : {},
-        completedHistory: Array.isArray(parsed?.completedHistory) ? parsed.completedHistory : []
+        completedHistory: Array.isArray(parsed?.completedHistory) ? parsed.completedHistory : [],
+        recalledOrders: Array.isArray(parsed?.recalledOrders) ? parsed.recalledOrders : []
       };
     } catch (_e) {
-      return { notHereAt: {}, completedHistory: [] };
+      return { notHereAt: {}, completedHistory: [], recalledOrders: [] };
     }
   }
 
   function saveKdsState() {
     localStorage.setItem(KDS_STATE_KEY, JSON.stringify({
       notHereAt: state.notHereAt,
-      completedHistory: state.completedHistory
+      completedHistory: state.completedHistory,
+      recalledOrders: state.recalledOrders
     }));
   }
 
@@ -387,8 +390,10 @@
   }
 
   function classify(order) {
+    if (order && String(order.status || '') === 'NOT_HERE') return 'not-here';
+    if (order && String(order.fulfillmentState || '') === 'PREPARED') return 'not-here';
     if (state.notHereAt[order.id]) return 'not-here';
-    return order.fulfillmentState === 'PREPARED' ? 'not-here' : 'open';
+    return 'open';
   }
 
   function deriveOrderItems(order) {
@@ -430,6 +435,45 @@
 
   function selectedHistoryOrder() {
     return state.completedHistory.find(function (o) { return o.id === state.selectedHistoryId; }) || null;
+  }
+
+  function toHistoryOrders(squareOrders) {
+    const list = Array.isArray(squareOrders) ? squareOrders : [];
+    return list
+      .filter(function (o) {
+        const orderState = String(o.orderState || '').toUpperCase();
+        return orderState === 'COMPLETED' || orderState === 'CANCELED';
+      })
+      .map(function (o) {
+        const completedAt = Number(o.closedAt || o.updatedAt || o.createdAt || Date.now());
+        return {
+          id: o.id,
+          customerName: o.customerName || 'Order',
+          createdAt: Number(o.createdAt || completedAt || Date.now()),
+          completedAt: completedAt,
+          fulfillmentState: o.fulfillmentState || '',
+          itemLines: deriveOrderItems(o).slice(0, 8),
+          noteLines: Array.isArray(o.noteLines) ? o.noteLines.slice(0, 4) : [],
+          orderState: o.orderState || ''
+        };
+      })
+      .sort(function (a, b) { return (b.completedAt || 0) - (a.completedAt || 0); });
+  }
+
+  function mergeHistoryWithLocal(squareHistory) {
+    const now = Date.now();
+    const keepMs = 2 * 60 * 60 * 1000;
+    const byId = new Map();
+    (Array.isArray(squareHistory) ? squareHistory : []).forEach(function (o) {
+      if (o && o.id) byId.set(o.id, Object.assign({}, o, { optimistic: false }));
+    });
+    (Array.isArray(state.completedHistory) ? state.completedHistory : []).forEach(function (o) {
+      if (!o || !o.id || !o.optimistic) return;
+      const completedAt = Number(o.completedAt || 0);
+      if (!completedAt || (now - completedAt) > keepMs) return;
+      if (!byId.has(o.id)) byId.set(o.id, o);
+    });
+    return Array.from(byId.values()).sort(function (a, b) { return (b.completedAt || 0) - (a.completedAt || 0); });
   }
 
   function sortOrders() {
@@ -479,29 +523,54 @@
     }
 
     try {
+      const todayLocal = new Date();
+      const dayLocal = [
+        todayLocal.getFullYear(),
+        String(todayLocal.getMonth() + 1).padStart(2, '0'),
+        String(todayLocal.getDate()).padStart(2, '0')
+      ].join('-');
+      const dayStartLocalIso = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), todayLocal.getDate(), 0, 0, 0, 0).toISOString();
+      const dayEndLocalIso = new Date(todayLocal.getFullYear(), todayLocal.getMonth(), todayLocal.getDate(), 23, 59, 59, 999).toISOString();
+
+      const isHistoryView = state.view === 'history';
       const body = await apiPost('/square/orders', {
         locationId: state.locationId,
-        environment: state.environment
+        environment: state.environment,
+        includeClosed: isHistoryView,
+        includeKdsQueue: !isHistoryView,
+        day: dayLocal,
+        dayStart: dayStartLocalIso,
+        dayEnd: dayEndLocalIso
       });
 
-      state.orders = Array.isArray(body.orders) ? body.orders : [];
-      const liveAvgWaitMs = body.avgWaitMs != null ? body.avgWaitMs : defaultAvgWaitMs;
-      state.avgWaitMs = state.orders.length
-        ? Math.max(defaultAvgWaitMs, liveAvgWaitMs)
-        : defaultAvgWaitMs;
-      state.lastFetchAt = Date.now();
-
-      const liveIds = new Set(state.orders.map(function (o) { return o.id; }));
-      Object.keys(state.notHereAt).forEach(function (id) {
-        if (!liveIds.has(id)) delete state.notHereAt[id];
-      });
-      saveKdsState();
-
-      if (!state.selectedId || !liveIds.has(state.selectedId)) {
-        state.selectedId = state.orders[0] ? state.orders[0].id : '';
+      if (isHistoryView) {
+        state.completedHistory = mergeHistoryWithLocal(toHistoryOrders(body.orders));
+      } else {
+        state.orders = Array.isArray(body.orders) ? body.orders : [];
       }
 
-      setStatus('Live from ' + state.environment + ' | ' + state.orders.length + ' visible tickets', 'ok');
+      const liveAvgWaitMs = body.avgWaitMs != null ? body.avgWaitMs : defaultAvgWaitMs;
+      state.avgWaitMs = state.orders.length ? Math.max(defaultAvgWaitMs, liveAvgWaitMs) : defaultAvgWaitMs;
+      state.lastFetchAt = Date.now();
+
+      if (!isHistoryView) {
+        const liveIds = new Set(state.orders.map(function (o) { return o.id; }));
+        Object.keys(state.notHereAt).forEach(function (id) {
+          if (!liveIds.has(id)) delete state.notHereAt[id];
+        });
+        saveKdsState();
+        if (!state.selectedId || !liveIds.has(state.selectedId)) {
+          state.selectedId = state.orders[0] ? state.orders[0].id : '';
+        }
+      } else if (!state.selectedHistoryId || !state.completedHistory.some(function (o) { return o.id === state.selectedHistoryId; })) {
+        state.selectedHistoryId = state.completedHistory[0] ? state.completedHistory[0].id : '';
+      }
+
+      if (isHistoryView) {
+        setStatus('Completed view from ' + state.environment + ' | ' + state.completedHistory.length + ' tickets for ' + dayLocal, 'ok');
+      } else {
+        setStatus('Live from ' + state.environment + ' | ' + state.orders.length + ' visible tickets', 'ok');
+      }
     } catch (error) {
       setStatus(error && error.message ? error.message : 'Failed to fetch orders', 'error');
       console.error('[KDS] fetchOrders failed', {
@@ -516,21 +585,29 @@
   }
 
   async function markComplete(orderId) {
-    const completedOrder = state.orders.find(function (o) { return o.id === orderId; }) || null;
-    if (completedOrder) {
-      const now = Date.now();
-      state.completedHistory.unshift({
-        id: completedOrder.id,
-        customerName: completedOrder.customerName || 'Order',
-        createdAt: completedOrder.createdAt || now,
-        completedAt: now,
-        fulfillmentState: completedOrder.fulfillmentState || '',
-        itemLines: deriveOrderItems(completedOrder).slice(0, 8),
-        noteLines: Array.isArray(completedOrder.noteLines) ? completedOrder.noteLines.slice(0, 4) : []
-      });
-      state.completedHistory = state.completedHistory.slice(0, 40);
-      state.selectedHistoryId = state.completedHistory[0] ? state.completedHistory[0].id : '';
+    const order = state.orders.find(function (o) { return o.id === orderId; }) || null;
+    const isQueueBacked = order && String(order.sourceType || '').startsWith('square_terminal');
+    const queueId = order && order.queueId ? String(order.queueId) : String(orderId);
+    const sourceOrderId = order && order.sourceOrderId ? String(order.sourceOrderId) : String(orderId);
+
+    const completedAtNow = Date.now();
+    if (order) {
+      const optimisticHistory = {
+        id: sourceOrderId,
+        customerName: order.customerName || 'Order',
+        createdAt: Number(order.createdAt || completedAtNow),
+        completedAt: completedAtNow,
+        fulfillmentState: 'COMPLETED',
+        itemLines: deriveOrderItems(order).slice(0, 8),
+        noteLines: Array.isArray(order.noteLines) ? order.noteLines.slice(0, 4) : [],
+        orderState: 'COMPLETED',
+        optimistic: true
+      };
+      state.completedHistory = state.completedHistory.filter(function (h) { return h.id !== optimisticHistory.id; });
+      state.completedHistory.unshift(optimisticHistory);
+      if (!state.selectedHistoryId) state.selectedHistoryId = optimisticHistory.id;
     }
+
     delete state.notHereAt[orderId];
     state.orders = state.orders.filter(function (o) { return o.id !== orderId; });
     if (state.selectedId === orderId) state.selectedId = state.orders[0] ? state.orders[0].id : '';
@@ -539,22 +616,52 @@
     render();
 
     try {
-      await apiPost('/square/orders/complete', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+      // Write shared done marker first to suppress bounce-back during eventual consistency windows.
+      await apiPost('/kds/queue/remove', {
+        locationId: state.locationId,
+        environment: state.environment,
+        queueId: queueId,
+        sourceOrderId: sourceOrderId
+      });
+
+      if (isQueueBacked) {
+        // Queue-backed orders are already terminal in Square; done marker is sufficient.
+      } else {
+        await apiPost('/square/orders/complete', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+      }
     } catch (error) {
       setStatus('Complete API failed (removed locally): ' + (error && error.message ? error.message : String(error)), 'error');
       console.error('[KDS] complete failed', { orderId: orderId, error: String(error) });
     }
-    render();
+    await fetchOrders();
   }
 
   async function markNotHere(orderId) {
-    state.notHereAt[orderId] = Date.now();
+    const order = state.orders.find(function (o) { return o.id === orderId; }) || null;
+    state.notHereAt[orderId] = Date.now(); // optimistic until API refresh returns preparedAt
     saveKdsState();
     setStatus('Marked as Not Here.', 'ok');
     render();
 
     try {
-      await apiPost('/square/orders/prepared', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+      const isQueueBacked = order && String(order.sourceType || '').startsWith('square_terminal');
+      if (!isQueueBacked) {
+        await apiPost('/square/orders/prepared', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+      }
+      await apiPost('/kds/queue/upsert', {
+        locationId: state.locationId,
+        environment: state.environment,
+        queueId: (order && order.queueId) ? order.queueId : orderId,
+        sourceOrderId: (order && order.sourceOrderId) ? order.sourceOrderId : orderId,
+        customerName: order && order.customerName ? order.customerName : 'Order',
+        itemLines: order && Array.isArray(order.itemLines) ? order.itemLines : [],
+        noteLines: order && Array.isArray(order.noteLines) ? order.noteLines : [],
+        createdAt: order && order.createdAt ? order.createdAt : Date.now(),
+        preparedAt: Date.now(),
+        status: 'NOT_HERE',
+        sourceType: isQueueBacked ? 'square_terminal_recall' : 'square_open_order'
+      });
+      await fetchOrders();
     } catch (error) {
       console.warn('[KDS] prepared endpoint unavailable or failed', { orderId: orderId, error: String(error) });
       setStatus('Marked local Not Here. (API prepared update failed)', 'error');
@@ -563,31 +670,64 @@
   }
 
   async function undoComplete(orderId) {
-    const idx = state.completedHistory.findIndex(function (o) { return o.id === orderId; });
-    if (idx < 0) return;
-    const historyOrder = state.completedHistory[idx];
-    const restored = {
-      id: historyOrder.id,
-      customerName: historyOrder.customerName || 'Order',
-      createdAt: historyOrder.createdAt || Date.now(),
-      fulfillmentState: 'PROPOSED',
-      itemLines: Array.isArray(historyOrder.itemLines) ? historyOrder.itemLines.slice() : [],
-      noteLines: Array.isArray(historyOrder.noteLines) ? historyOrder.noteLines.slice() : [],
-      line_items: []
-    };
-
-    state.completedHistory.splice(idx, 1);
-    state.orders = [restored].concat(state.orders.filter(function (o) { return o.id !== orderId; }));
-    state.selectedId = restored.id;
-    state.view = 'board';
-    setStatus('Undo complete: ticket restored to top.', 'ok');
-    saveKdsState();
+    if (!orderId) return;
+    setStatus('Recalling ticket...', '');
     render();
 
     try {
+      const h = state.completedHistory.find(function (x) { return x.id === orderId; }) || null;
       await apiPost('/square/orders/reopen', { orderId: orderId, locationId: state.locationId, environment: state.environment });
+      await apiPost('/kds/queue/upsert', {
+        locationId: state.locationId,
+        environment: state.environment,
+        queueId: orderId,
+        sourceOrderId: orderId,
+        customerName: h && h.customerName ? h.customerName : 'Order',
+        itemLines: h && Array.isArray(h.itemLines) ? h.itemLines : [],
+        noteLines: h && Array.isArray(h.noteLines) ? h.noteLines : [],
+        createdAt: h && h.createdAt ? h.createdAt : Date.now(),
+        status: 'PREPARING',
+        sourceType: 'square_terminal_recall'
+      });
+      state.completedHistory = state.completedHistory.filter(function (x) { return x.id !== orderId; });
+      if (state.selectedHistoryId === orderId) {
+        state.selectedHistoryId = state.completedHistory[0] ? state.completedHistory[0].id : '';
+      }
+      state.view = 'board';
+      setStatus('Ticket recalled to live board.', 'ok');
+      await fetchOrders();
     } catch (error) {
-      setStatus('Undo API failed (restored locally): ' + (error && error.message ? error.message : String(error)), 'error');
+      const msg = error && error.message ? error.message : String(error);
+      const isTerminalCompleted = /status `COMPLETED` and cannot be updated/i.test(msg);
+      if (isTerminalCompleted) {
+        const h = state.completedHistory.find(function (x) { return x.id === orderId; }) || null;
+        if (h) {
+          const createdAt = h.createdAt || Date.now();
+          await apiPost('/kds/queue/upsert', {
+            locationId: state.locationId,
+            environment: state.environment,
+            queueId: orderId,
+            sourceOrderId: orderId,
+            customerName: h.customerName || 'Order',
+            itemLines: Array.isArray(h.itemLines) ? h.itemLines : [],
+            noteLines: Array.isArray(h.noteLines) ? h.noteLines : [],
+            createdAt: createdAt,
+            status: 'PREPARING',
+            sourceType: 'square_terminal_recall'
+          });
+          state.completedHistory = state.completedHistory.filter(function (x) { return x.id !== orderId; });
+          if (state.selectedHistoryId === orderId) {
+            state.selectedHistoryId = state.completedHistory[0] ? state.completedHistory[0].id : '';
+          }
+          state.view = 'board';
+          state.selectedId = orderId;
+          saveKdsState();
+          setStatus('Square order is terminal COMPLETED. Recalled to shared live queue.', 'ok');
+          await fetchOrders();
+          return;
+        }
+      }
+      setStatus('Undo API failed: ' + msg, 'error');
       console.error('[KDS] undo complete failed', { orderId: orderId, error: String(error) });
       render();
     }
@@ -613,11 +753,13 @@
     }
   }
 
-  function markPickedUp(orderId) {
-    delete state.notHereAt[orderId];
-    saveKdsState();
-    setStatus('Marked picked up (local).', 'ok');
+  async function markPickedUp(orderId) {
+    const order = state.orders.find(function (o) { return o.id === orderId; }) || null;
+    if (!order) return;
+    setStatus('Marking picked up...', '');
     render();
+    // Pickup means the order is handed off; complete it in Square.
+    await markComplete(orderId);
   }
 
   function sectionHtml(title, cls, orders) {
@@ -628,7 +770,7 @@
       const badgeText = cls === 'not-here' ? 'not here' : 'open';
       const active = state.selectedId === o.id ? ' active' : '';
       const nhWait = cls === 'not-here' && state.notHereAt[o.id]
-        ? 'Pickup wait ' + fmtWait(Date.now() - state.notHereAt[o.id])
+        ? 'Pickup wait ' + fmtWait(Date.now() - (o.preparedAt || state.notHereAt[o.id]))
         : '';
       return `
         <article class="card ${cls}${active}" data-order-id="${o.id}">
@@ -666,7 +808,9 @@
     const kind = classify(order);
     const isNotHere = kind === 'not-here';
     const wait = fmtWait(Date.now() - (order.createdAt || Date.now()));
-    const pickupWait = isNotHere && state.notHereAt[order.id] ? fmtWait(Date.now() - state.notHereAt[order.id]) : '';
+    const pickupWait = isNotHere
+      ? fmtWait(Date.now() - (order.preparedAt || state.notHereAt[order.id] || Date.now()))
+      : '';
     const items = deriveOrderItems(order);
     const notes = Array.isArray(order.noteLines) ? order.noteLines : [];
 
@@ -857,7 +1001,7 @@
         } else {
           state.selectedId = state.orders[0] ? state.orders[0].id : '';
         }
-        render();
+        void fetchOrders();
       });
     }
 
@@ -880,6 +1024,7 @@
     const persisted = readKdsState();
     state.notHereAt = persisted.notHereAt;
     state.completedHistory = persisted.completedHistory;
+    state.recalledOrders = persisted.recalledOrders || [];
     state.selectedHistoryId = state.completedHistory[0] ? state.completedHistory[0].id : '';
     setStatus('Loading tickets...', '');
     render();
