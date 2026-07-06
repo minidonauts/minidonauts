@@ -53,56 +53,79 @@ let eventDrivingTime;
 let eventDrivingDistance;
 
 // Cost constants
-const CAR_CENTS_PER_MILE = 0.22;
-const GEN_GAL_PER_HR     = 4 / 6;
-const GAS_PRICE          = 4;
-const MIX_BAG_COST       = 87.49;
-const BATCHES_PER_BAG    = 21;
-const OIL_COST           = 68.49;
-const BATCHES_PER_OIL    = 18;
-const WATER_CASE_COST    = 6.89 * 1.25;
-const WATER_PER_CASE     = 35;
+const CAR_CENTS_PER_MILE  = 0.22;
+const GEN_GAL_PER_HR      = 4 / 6;
+const GAS_PRICE           = 4;
+const MIX_BAG_COST        = 90;
+const BATCHES_PER_BAG     = 19;
 const SERVINGS_PER_BATCH  = 14;  // bags of donuts per batch of mix
-const BAGS_PER_HOUR       = 75;  // realistic serving capacity
-const CAPACITY_PER_HOUR   = 75;  // max guests per hour for Ticketed
-const SETUP_HRS          = 1.5;
-const TEARDOWN_HRS       = 1.5;
-const WAGE_PER_HR        = 45.12 * 2;  // 2 chefs
 
-function nonServiceHours() {
-    return SETUP_HRS + TEARDOWN_HRS + eventDrivingTime * 2;
-}
+// Machine configurations: label, bags per hour, complexity premium (% of single-flow base), propane
+const MACHINES = [
+    { label: 'Single Flow',    bagsPerHr: 75,  premium: 0,    propane: 5  },
+    { label: 'Double Flow',    bagsPerHr: 150, premium: 0.12, propane: 5  },
+    { label: '2\xD7 Double Flow', bagsPerHr: 300, premium: 0.22, propane: 10 },
+];
+const PREP_HRS            = 2;
+const CLEAN_HRS           = 2;
+const LOAD_HRS            = 1;
+const WAGE_PER_HR         = 50 * 2;  // 2 chefs
+const OWNER_CUT           = 0.32;
+const CAPEX_RATE          = 0.15;
+const GUEST_SCALE_RATE    = 0.002;  // quadratic — tune to control how fast $/person grows with crowd size
+const GUEST_SCALE_FLOOR   = 100;    // guests below this add nothing
 
 function travelCost(serviceHours) {
     const carGas = CAR_CENTS_PER_MILE * eventDrivingDistance * 2;
-    const genGas = (SETUP_HRS + serviceHours + TEARDOWN_HRS) * GEN_GAL_PER_HR * GAS_PRICE;
+    const genGas = (PREP_HRS + serviceHours + CLEAN_HRS + LOAD_HRS) * GEN_GAL_PER_HR * GAS_PRICE;
     return carGas + genGas;
 }
 
-function ingredientCost(batches) {
+// Prep + service + drive are per-employee (both chefs); clean + load are fixed totals (single rate)
+function laborCost(serviceHours) {
+    const perEmployeeHrs = serviceHours + PREP_HRS + eventDrivingTime * 2;
+    const totalHrs       = CLEAN_HRS + LOAD_HRS;
+    return perEmployeeHrs * WAGE_PER_HR + totalHrs * (WAGE_PER_HR / 2);
+}
+
+
+function ingredientCost(batches, cookingHours) {
     const mix   = (MIX_BAG_COST / BATCHES_PER_BAG) * batches;
-    const oil   = (OIL_COST / BATCHES_PER_OIL) * batches;
-    const water = (WATER_CASE_COST / WATER_PER_CASE) * batches;
+    const oil   = cookingHours * 2 + batches;
+    const water = batches / 2;
     return mix + oil + water;
 }
 
+function applyMarkup(cost) {
+    return cost * (1 + OWNER_CUT + CAPEX_RATE);
+}
+
+function guestScaleFee(guests) {
+    const over = Math.max(0, guests - GUEST_SCALE_FLOOR);
+    return GUEST_SCALE_RATE * over * over;
+}
+
 // AYCE: full production capacity, host pays everything
-function calculateAYCE(hours) {
-    const batches      = Math.ceil(BAGS_PER_HOUR * hours / SERVINGS_PER_BATCH);
-    const totalHrsAway = hours + nonServiceHours();
-    return travelCost(hours) + ingredientCost(batches) + totalHrsAway * WAGE_PER_HR;
+function calculateAYCE(hours, machine, guests) {
+    const batches = Math.ceil(machine.bagsPerHr * hours / SERVINGS_PER_BATCH);
+    const base = travelCost(hours) + ingredientCost(batches, hours) + laborCost(hours) + machine.propane + machine.surcharge + guestScaleFee(guests);
+    return applyMarkup(base);
 }
 
 // Ticketed: exactly 1 bag per guest, ingredients based on headcount
-function calculateTicketed(hours, guests) {
-    const batches      = Math.ceil(guests / SERVINGS_PER_BATCH);
-    const totalHrsAway = hours + nonServiceHours();
-    return travelCost(hours) + ingredientCost(batches) + totalHrsAway * WAGE_PER_HR;
+function calculateTicketed(hours, guests, machine) {
+    const batches = Math.ceil(guests / SERVINGS_PER_BATCH);
+    const base = travelCost(hours) + ingredientCost(batches, hours) + laborCost(hours) + machine.propane + machine.surcharge + guestScaleFee(guests);
+    return applyMarkup(base);
 }
 
-// Landing: host pays travel + setup/teardown labor only; service time earned via direct sales
-function calculateLanding(hours) {
-    return travelCost(hours) + nonServiceHours() * WAGE_PER_HR;
+// Landing: flat show-up fee — labor/travel covered by direct sales revenue
+// Tune LANDING_BASE and LANDING_PER_GUEST to hit target prices
+const LANDING_BASE      = 130;   // base fee regardless of guest count
+const LANDING_PER_GUEST = 0.28;  // per-guest rate (130 + 0.28*250 ≈ $200, + 0.28*800 ≈ $354)
+
+function calculateLanding(guests, machine) {
+    return (LANDING_BASE + guests * LANDING_PER_GUEST) * (1 + machine.premium);
 }
 
 function recalculateEventCosts() {
@@ -129,17 +152,57 @@ function recalculateEventCosts() {
 
     const fmt = (n) => `$${Math.ceil(n)}`;
 
-    $('#q-ayce-1').text(fmt(calculateAYCE(1)));
-    $('#q-ayce-2').text(fmt(calculateAYCE(2)));
-    $('#q-ayce-3').text(fmt(calculateAYCE(3)));
+    // Single-flow base cost — used to scale percentage premiums across all modes
+    const baseHrs   = Math.max(1, Math.ceil(guests / MACHINES[0].bagsPerHr));
+    const sfBatches = Math.ceil(MACHINES[0].bagsPerHr * baseHrs / SERVINGS_PER_BATCH);
+    const sfBase    = travelCost(baseHrs) + ingredientCost(sfBatches, baseHrs) + laborCost(baseHrs) + MACHINES[0].propane;
 
-    $('#q-tick-1').text(guests <= CAPACITY_PER_HOUR * 1 ? fmt(calculateTicketed(1, guests)) : '-');
-    $('#q-tick-2').text(guests <= CAPACITY_PER_HOUR * 2 ? fmt(calculateTicketed(2, guests)) : '-');
-    $('#q-tick-3').text(guests <= CAPACITY_PER_HOUR * 3 ? fmt(calculateTicketed(3, guests)) : '-');
+    // In machine view, respect the show-single-flow toggle after grid is populated
+    const showSF = !$('#duration-view').is(':checked') && !$('#show-single-flow').is(':checked');
 
-    $('#q-land-1').text(fmt(calculateLanding(1)));
-    $('#q-land-2').text(fmt(calculateLanding(2)));
-    $('#q-land-3').text(fmt(calculateLanding(3)));
+    if ($('#duration-view').is(':checked')) {
+        // Duration View: selected machine at minimum hours + 2 longer options
+        const machine   = $('#duration-single').is(':checked') ? MACHINES[0] : MACHINES[1];
+        const minHrs    = Math.max(1, Math.ceil(guests / machine.bagsPerHr));
+        const hours     = [minHrs, minHrs + 1, minHrs + 2];
+        $('#q-guest-range').text(machine.label);
+        $('#qm-th-0, #qm-ayce-0, #qm-tick-0, #qm-land-0').show();
+
+        hours.forEach((h, i) => {
+            const laborOffset = (baseHrs - h) * WAGE_PER_HR;
+            const m = Object.assign({}, machine, { surcharge: laborOffset + sfBase * machine.premium });
+            const hUnit = h === 1 ? 'Hr' : 'Hrs';
+            $(`#qm-th-${i}`).html(
+                `<span style="display:block;">${h}</span>` +
+                `<span style="display:block;">${hUnit}</span>`
+            );
+            $(`#qm-ayce-${i}`).text(fmt(calculateAYCE(h, m, guests)));
+            $(`#qm-tick-${i}`).text(fmt(calculateTicketed(h, guests, m)));
+            $(`#qm-land-${i}`).text(fmt(calculateLanding(guests, machine)));
+        });
+
+    } else {
+        // Machine View: one column per machine type, each at its own minimum hours
+        const rangeMin = (baseHrs - 1) * MACHINES[0].bagsPerHr + 1;
+        const rangeMax = baseHrs * MACHINES[0].bagsPerHr;
+        $('#q-guest-range').text(`${rangeMin} – ${rangeMax} guests`);
+
+        MACHINES.forEach((machine, i) => {
+            const minHrs      = Math.max(1, Math.ceil(guests / machine.bagsPerHr));
+            const hrsLabel    = minHrs === 1 ? '1 Hr' : `${minHrs} Hrs`;
+            const laborOffset = (baseHrs - minHrs) * WAGE_PER_HR;
+            const m = Object.assign({}, machine, { surcharge: laborOffset + sfBase * machine.premium });
+            $(`#qm-th-${i}`).html(
+                `<span style="display:block;">${machine.label}</span>` +
+                `<span style="display:block; font-size:0.75rem; font-weight:normal;">${hrsLabel}</span>`
+            );
+            $(`#qm-ayce-${i}`).text(fmt(calculateAYCE(minHrs, m, guests)));
+            $(`#qm-tick-${i}`).text(fmt(calculateTicketed(minHrs, guests, m)));
+            $(`#qm-land-${i}`).text(fmt(calculateLanding(guests, machine)));
+        });
+    }
+
+    if (showSF) $('#qm-th-0, #qm-ayce-0, #qm-tick-0, #qm-land-0').hide();
 
     $('#q-event-info').text(`Zip: ${currZip}  •  ${eventDrivingDistance.toFixed(0)} miles from Westmont  •  ${guests} guests`);
 
@@ -149,4 +212,17 @@ function recalculateEventCosts() {
 }
 
 recalculateEventCosts();
+
+$('#duration-view').on('change', function () {
+    $('#duration-single-label').css('display', this.checked ? 'flex' : 'none');
+    $('#show-single-flow-label').css('display', this.checked ? 'none' : 'flex');
+    if (!this.checked) $('#duration-single').prop('checked', false);
+    recalculateEventCosts();
+});
+
+$('#show-single-flow').on('change', function () {
+    $('#qm-th-0, #qm-ayce-0, #qm-tick-0, #qm-land-0').toggle(this.checked);
+});
+
+$('#duration-single').on('change', recalculateEventCosts);
 

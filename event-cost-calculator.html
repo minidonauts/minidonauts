@@ -88,6 +88,7 @@
             background: #fdba44;
             color: #0a3a6b;
             font-weight: bold;
+            vertical-align: top;
         }
         .quote-table td:first-child {
             text-align: left;
@@ -208,6 +209,18 @@
                         <div class="col-6">
                             <div class="calc-label">Zipcode of Event</div>
                             <input id="event-zip" class="calc-input" type="text" maxlength="5" pattern="[0-9]{5}" value="60137" />
+                            <label style="display:flex; align-items:center; gap:0.45rem; margin-top:0.55rem; cursor:pointer; font-size:0.8rem; color:#ffe9a6; user-select:none;">
+                                <input type="checkbox" id="duration-view" style="accent-color:#fdba44; width:1rem; height:1rem;" />
+                                Duration View
+                            </label>
+                            <label id="duration-single-label" style="display:none; align-items:center; gap:0.45rem; margin-top:0.3rem; cursor:pointer; font-size:0.8rem; color:#ffe9a6cc; user-select:none; padding-left:1.45rem;">
+                                <input type="checkbox" id="duration-single" style="accent-color:#fdba44; width:0.9rem; height:0.9rem;" />
+                                Single Flow rates
+                            </label>
+                            <label id="show-single-flow-label" style="display:flex; align-items:center; gap:0.45rem; margin-top:0.3rem; cursor:pointer; font-size:0.8rem; color:#ffe9a6cc; user-select:none;">
+                                <input type="checkbox" id="show-single-flow" checked style="accent-color:#fdba44; width:0.9rem; height:0.9rem;" />
+                                Show Single Flow
+                            </label>
                         </div>
                         <div class="col-6">
                             <div class="calc-label">Number of Guests</div>
@@ -245,21 +258,18 @@
                             <!-- Event details -->
                             <div id="q-event-info" class="quote-info-bar">-</div>
 
-                            <!-- Price table -->
+                            <!-- Pricing grid — one column per machine config -->
                             <div class="quote-grid-overlay">
                             <table class="quote-table">
                                 <thead>
                                     <tr>
-                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488; text-align:left;">Pricing Model</th>
-                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
-                                            1 Hour<br><span style="font-size:0.68rem; font-weight:normal;">50 - 75 guests</span>
+                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488; text-align:left;">
+                                            <span style="display:block;">Pricing Model</span>
+                                            <span id="q-guest-range" style="display:block; font-size:0.68rem; font-weight:normal; color:#0a3a6bcc;"></span>
                                         </th>
-                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
-                                            2 Hours<br><span style="font-size:0.68rem; font-weight:normal;">76 - 150 guests</span>
-                                        </th>
-                                        <th style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">
-                                            3 Hours<br><span style="font-size:0.68rem; font-weight:normal;">151 - 225 guests</span>
-                                        </th>
+                                        <th id="qm-th-0" style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">Single Flow</th>
+                                        <th id="qm-th-1" style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">Double Flow</th>
+                                        <th id="qm-th-2" style="background:#fdba44; color:#0a3a6b; border:1px solid #fdba4488;">2× Double Flow</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -268,27 +278,27 @@
                                             <div style="color:#ffe9a6; font-weight:bold;">All You Can Eat</div>
                                             <div style="color:#ffffff99; font-size:0.72rem;">Host pays flat fee • unlimited donuts</div>
                                         </td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-1">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-2">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-ayce-3">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-ayce-0">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-ayce-1">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-ayce-2">-</td>
                                     </tr>
                                     <tr>
                                         <td style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;">
                                             <div style="color:#ffe9a6; font-weight:bold;">Ticketed</div>
                                             <div style="color:#ffffff99; font-size:0.72rem;">1 bag per guest • host pays ingredients + labor</div>
                                         </td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-1">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-2">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="q-tick-3">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="qm-tick-0">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="qm-tick-1">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem; background:#ffffff0d;" id="qm-tick-2">-</td>
                                     </tr>
                                     <tr>
                                         <td style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;">
                                             <div style="color:#ffe9a6; font-weight:bold;">Landing</div>
                                             <div style="color:#ffffff99; font-size:0.72rem;">Host pays to show up • guests buy direct</div>
                                         </td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-1">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-2">-</td>
-                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="q-land-3">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-land-0">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-land-1">-</td>
+                                        <td class="price-cell" style="border:1px solid #ffffff30; padding:0.55rem 0.75rem;" id="qm-land-2">-</td>
                                     </tr>
                                 </tbody>
                             </table>

@@ -145,11 +145,30 @@ export default {
         };
       }
 
+      function isLikelyPaidOpenOrder(o) {
+        const order = o && typeof o === "object" ? o : {};
+        const state = String(order?.state || "").toUpperCase();
+        if (state !== "OPEN") return false;
+
+        const totalAmount = Number(order?.total_money?.amount ?? NaN);
+        const dueAmount = Number(order?.net_amount_due_money?.amount ?? NaN);
+        if (!Number.isFinite(totalAmount) || totalAmount <= 0) return false;
+        if (Number.isFinite(dueAmount)) return dueAmount <= 0;
+
+        return false;
+      }
+
       function kvKey(environment, locationId, queueId) {
         return `kds:${environment}:${locationId}:${queueId}`;
       }
       function doneKey(environment, locationId, sourceOrderId) {
         return `kdsdone:${environment}:${locationId}:${sourceOrderId}`;
+      }
+
+      function shiftIso(iso, ms) {
+        const ts = Date.parse(String(iso || ""));
+        if (!Number.isFinite(ts)) return null;
+        return new Date(ts + ms).toISOString();
       }
 
       function normalizeQueueItem(raw, fallbackEnvironment, fallbackLocationId) {
@@ -469,6 +488,7 @@ export default {
         const base = squareBase(environment);
         const effectiveDayStart = dayStart || `${(day || new Date().toISOString().slice(0, 10))}T00:00:00.000Z`;
         const effectiveDayEnd = dayEnd || `${(day || new Date().toISOString().slice(0, 10))}T23:59:59.999Z`;
+        const widenedStart = shiftIso(effectiveDayStart, -24 * 60 * 60 * 1000) || effectiveDayStart;
         const allOrders = [];
         let cursor = null;
         let pages = 0;
@@ -478,7 +498,15 @@ export default {
             ? {}
             : { state_filter: { states: ["OPEN"] } };
 
-          if (dayStart && dayEnd) {
+          const shouldUseWidenedLiveWindow = includeKdsQueue && !includeClosed;
+          if (shouldUseWidenedLiveWindow) {
+            searchFilter.date_time_filter = {
+              created_at: {
+                start_at: widenedStart,
+                end_at: effectiveDayEnd,
+              },
+            };
+          } else if (dayStart && dayEnd) {
             searchFilter.date_time_filter = {
               created_at: {
                 start_at: dayStart,
@@ -558,7 +586,7 @@ export default {
                     state_filter: { states: ["COMPLETED"] },
                     date_time_filter: {
                       created_at: {
-                        start_at: effectiveDayStart,
+                        start_at: widenedStart,
                         end_at: effectiveDayEnd,
                       },
                     },
@@ -579,11 +607,21 @@ export default {
           }
 
           const bySource = new Map();
+          // Include only OPEN orders that appear fully paid. This keeps kiosk-paid
+          // orders while excluding abandoned checkout artifacts.
           for (const sq of orders) {
+            if (!isLikelyPaidOpenOrder(sq)) continue;
             const sourceOrderId = String(sq.sourceOrderId || sq.id || "");
             if (!sourceOrderId) continue;
             if (await isDoneMemo(sourceOrderId)) continue;
-            bySource.set(sourceOrderId, sq);
+            bySource.set(sourceOrderId, {
+              ...sq,
+              sourceType: "square_kiosk_paid_open",
+              status: "PREPARING",
+              fulfillmentState: "PROPOSED",
+              orderState: "OPEN",
+              queueId: sourceOrderId,
+            });
           }
           for (const co of completedOrders.map(normalizeOrder)) {
             const sourceOrderId = String(co.sourceOrderId || co.id || "");
