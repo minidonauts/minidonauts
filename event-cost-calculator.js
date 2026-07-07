@@ -168,9 +168,11 @@ function recalculateEventCosts() {
         $('#q-guest-range').text(machine.label);
         $('#qm-th-0, #qm-ayce-0, #qm-tick-0, #qm-land-0').show();
 
+        // Surcharge fixed at minimum-hours value so labor cost differences flow through cleanly
+        const durationLaborOffset = (baseHrs - minHrs) * WAGE_PER_HR;
+        const m = Object.assign({}, machine, { surcharge: durationLaborOffset + sfBase * machine.premium });
+
         hours.forEach((h, i) => {
-            const laborOffset = (baseHrs - h) * WAGE_PER_HR;
-            const m = Object.assign({}, machine, { surcharge: laborOffset + sfBase * machine.premium });
             const hUnit = h === 1 ? 'Hr' : 'Hrs';
             $(`#qm-th-${i}`).html(
                 `<span style="display:block;">${h}</span>` +
